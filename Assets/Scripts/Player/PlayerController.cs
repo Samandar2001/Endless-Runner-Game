@@ -20,16 +20,21 @@ public class PlayerController : MonoBehaviour
     private Vector3 velocity;
 
     public Animator animator;
-    private bool isSliding = false;
+    private bool RunBool = false;
 
     public float slideDuration = 1.5f;
 
     bool toggle = false;
+    [SerializeField] private string _sitTriggerName = "Sit";
+    [SerializeField] private string _jumpTriggerName = "Jump";
+    [SerializeField] private string _runBoolName = "IsRunning";
 
     void Start()
     {
+        animator.Play(_runBoolName);
         controller = GetComponent<CharacterController>();
         Time.timeScale = 1.2f;
+        
     }
 
     private void FixedUpdate()
@@ -65,24 +70,21 @@ public class PlayerController : MonoBehaviour
         if (isGrounded && velocity.y < 0)
             velocity.y = -1f;
 
-        if (isGrounded)
+        if (!isGrounded)
         {
+           
             if (SwipeManager.swipeUp)
-                Jump();
+                StartCoroutine(Jump());
 
-            if (SwipeManager.swipeDown && !isSliding)
-                StartCoroutine(Slide());
-        }
-        else
-        {
-            velocity.y += gravity * Time.deltaTime;
-            if (SwipeManager.swipeDown && !isSliding)
+            else if (SwipeManager.swipeDown)
+                StartCoroutine(Sit());
+            if(RunBool)
             {
-                StartCoroutine(Slide());
-                velocity.y = -10;
-            }                
-
+                animator.Play(_runBoolName);
+            }
         }
+        
+        
         controller.Move(velocity * Time.deltaTime);
 
         //Gather the inputs on which lane we should be
@@ -120,18 +122,6 @@ public class PlayerController : MonoBehaviour
         controller.Move(move * Time.deltaTime);
     }
 
-    private void Jump()
-    {   
-        StopCoroutine(Slide());
-        animator.SetBool("isSliding", false);
-        animator.SetTrigger("jump");
-        controller.center = Vector3.zero;
-        controller.height = 2;
-        isSliding = false;
-   
-        velocity.y = Mathf.Sqrt(jumpHeight * 2 * -gravity);
-    }
-
     private void OnControllerColliderHit(ControllerColliderHit hit)
     {
         if(hit.transform.tag == "Obstacle")
@@ -140,10 +130,22 @@ public class PlayerController : MonoBehaviour
             FindObjectOfType<AudioManager>().PlaySound("GameOver");
         }
     }
-
+    private IEnumerator Jump()
+    {
+        RunBool = false;
+        animator.Play(_jumpTriggerName);
+        yield return new WaitForSeconds(1.5f);
+        RunBool = true;
+    }
+    private IEnumerator Sit()
+    {
+        RunBool = false;
+        animator.Play(_sitTriggerName);
+        yield return new WaitForSeconds(1.55f);
+        RunBool = true;
+    }
     private IEnumerator Slide()
     {
-        isSliding = true;
         animator.SetBool("isSliding", true);
         yield return new WaitForSeconds(0.25f/ Time.timeScale);
         controller.center = new Vector3(0, -0.5f, 0);
@@ -156,6 +158,6 @@ public class PlayerController : MonoBehaviour
         controller.center = Vector3.zero;
         controller.height = 2;
 
-        isSliding = false;
+        //isSliding = false;
     }
 }
